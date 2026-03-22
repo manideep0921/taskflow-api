@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskFlow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, body { font-family: 'DM Sans', sans-serif; }
+    code, .mono { font-family: 'DM Mono', monospace; }
+    .sidebar-item.active { background: #f0f4ff; color: #3b5bdb; font-weight: 600; }
+    .sidebar-item.active svg { stroke: #3b5bdb; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .badge-todo { background:#e9ecef;color:#495057; }
+    .badge-in_progress { background:#d0ebff;color:#1864ab; }
+    .badge-in_review { background:#fff3cd;color:#856404; }
+    .badge-done { background:#d3f9d8;color:#1a6b2a; }
+    .badge-backlog { background:#f3f0ff;color:#5f3dc4; }
+    .badge-cancelled { background:#ffe3e3;color:#c92a2a; }
+    .badge-low { background:#f1f3f5;color:#495057; }
+    .badge-medium { background:#fff3bf;color:#856404; }
+    .badge-high { background:#ffe8cc;color:#94320a; }
+    .badge-critical { background:#ffe3e3;color:#c92a2a; }
+    .badge-active { background:#d3f9d8;color:#1a6b2a; }
+    .badge-on_hold { background:#fff3bf;color:#856404; }
+    .badge-completed { background:#d0ebff;color:#1864ab; }
+    .badge-archived { background:#f1f3f5;color:#868e96; }
+    .toast { animation: slideIn .25s ease; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    .modal-backdrop { backdrop-filter: blur(2px); }
+    .spinner { border:2px solid #e9ecef; border-top-color:#3b5bdb; border-radius:50%; width:20px; height:20px; animation:spin .7s linear infinite; display:inline-block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:transparent; } ::-webkit-scrollbar-thumb { background:#dee2e6; border-radius:3px; }
+  </style>
+</head>
+<body class="h-full bg-gray-50 text-gray-900">
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-blue-50">
+  <div class="w-full max-w-md px-4">
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl mb-4 shadow-lg">
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      </div>
+      <h1 class="text-3xl font-semibold text-gray-900">TaskFlow</h1>
+      <p class="text-gray-500 mt-1 text-sm">Team task management, simplified</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <!-- Tabs -->
+      <div class="flex bg-gray-100 rounded-lg p-1 mb-6">
+        <button onclick="switchAuthTab('login')" id="tab-login" class="flex-1 text-sm py-1.5 rounded-md font-medium transition-all bg-white shadow-sm text-gray-900">Sign in</button>
+        <button onclick="switchAuthTab('register')" id="tab-register" class="flex-1 text-sm py-1.5 rounded-md font-medium transition-all text-gray-500">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" id="login-email" required placeholder="you@example.com"
+              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" id="login-password" required placeholder="••••••••"
+              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+          </div>
+          <div id="login-error" class="text-red-600 text-sm hidden"></div>
+          <button type="submit" id="login-btn"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
+            Sign in
+          </button>
+        </div>
+      </form>
+
+      <!-- Register Form -->
+      <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Full name</label>
+            <input type="text" id="reg-name" required placeholder="Jane Smith"
+              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input type="email" id="reg-email" required placeholder="you@example.com"
+              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input type="password" id="reg-password" required placeholder="Min. 8 characters"
+              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+            <input type="password" id="reg-password2" required placeholder="••••••••"
+              class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+          </div>
+          <div id="reg-error" class="text-red-600 text-sm hidden"></div>
+          <button type="submit" id="reg-btn"
+            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
+            Create account
+          </button>
+        </div>
+      </form>
+    </div>
+    <p class="text-center text-xs text-gray-400 mt-4">Demo: admin@taskflow.dev / Admin1234!</p>
+  </div>
+</div>
+
+<!-- APP SHELL -->
+<div id="app-shell" class="hidden h-screen flex overflow-hidden">
+  <!-- Sidebar -->
+  <aside class="w-60 bg-white border-r border-gray-100 flex flex-col flex-shrink-0">
+    <div class="px-4 py-5 border-b border-gray-100">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        </div>
+        <span class="font-semibold text-gray-900">TaskFlow</span>
+      </div>
+    </div>
+
+    <nav class="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+      <button onclick="navigate('dashboard')" class="sidebar-item active w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button onclick="navigate('projects')" class="sidebar-item w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+        Projects
+      </button>
+      <button onclick="navigate('my-tasks')" class="sidebar-item w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        My Tasks
+      </button>
+    </nav>
+
+    <!-- User block -->
+    <div class="p-3 border-t border-gray-100">
+      <div class="flex items-center gap-2.5 px-2 py-2">
+        <div id="sidebar-avatar" class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-sm"></div>
+        <div class="flex-1 min-w-0">
+          <p id="sidebar-name" class="text-sm font-medium text-gray-900 truncate"></p>
+          <p id="sidebar-email" class="text-xs text-gray-400 truncate"></p>
+        </div>
+        <button onclick="handleLogout()" title="Sign out" class="text-gray-400 hover:text-gray-600 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-y-auto bg-gray-50">
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page active p-8">
+      <div class="mb-8">
+        <h1 class="text-2xl font-semibold text-gray-900">Good <span id="greeting-time"></span>, <span id="greeting-name"></span> 👋</h1>
+        <p class="text-gray-500 mt-1 text-sm">Here's what's happening across your projects.</p>
+      </div>
+      <!-- Stats row -->
+      <div class="grid grid-cols-4 gap-4 mb-8" id="stats-grid">
+        <div class="bg-white rounded-xl border border-gray-100 p-5">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Projects</p>
+          <p class="text-3xl font-semibold text-gray-900 mt-1" id="stat-projects">—</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 p-5">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">My Tasks</p>
+          <p class="text-3xl font-semibold text-indigo-600 mt-1" id="stat-mytasks">—</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 p-5">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">In Progress</p>
+          <p class="text-3xl font-semibold text-blue-600 mt-1" id="stat-inprogress">—</p>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-100 p-5">
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Completed</p>
+          <p class="text-3xl font-semibold text-green-600 mt-1" id="stat-done">—</p>
+        </div>
+      </div>
+      <!-- Recent tasks -->
+      <div class="bg-white rounded-xl border border-gray-100">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 class="font-medium text-gray-900">My Tasks</h2>
+          <button onclick="navigate('my-tasks')" class="text-indigo-600 text-sm hover:underline">View all</button>
+        </div>
+        <div id="dashboard-tasks" class="divide-y divide-gray-50"></div>
+      </div>
+    </div>
+
+    <!-- PROJECTS PAGE -->
+    <div id="page-projects" class="page p-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-900">Projects</h1>
+          <p class="text-gray-500 text-sm mt-1">All projects you own or are a member of.</p>
+        </div>
+        <button onclick="openModal('create-project-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          New Project
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex gap-2 mb-5">
+        <input type="text" id="project-search" placeholder="Search projects…" oninput="filterProjects()"
+          class="flex-1 max-w-xs px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <select id="project-status-filter" onchange="filterProjects()"
+          class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="on_hold">On Hold</option>
+          <option value="completed">Completed</option>
+          <option value="archived">Archived</option>
+        </select>
+      </div>
+
+      <div id="projects-grid" class="grid grid-cols-3 gap-4"></div>
+      <div id="projects-empty" class="hidden text-center py-16 text-gray-400">
+        <svg class="w-10 h-10 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+        <p class="font-medium">No projects yet</p>
+        <p class="text-sm mt-1">Create your first project to get started.</p>
+      </div>
+    </div>
+
+    <!-- PROJECT DETAIL PAGE -->
+    <div id="page-project-detail" class="page p-8">
+      <div class="mb-6">
+        <button onclick="navigate('projects')" class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-4 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+          Back to Projects
+        </button>
+        <div class="flex items-start justify-between">
+          <div>
+            <h1 id="pd-name" class="text-2xl font-semibold text-gray-900"></h1>
+            <p id="pd-description" class="text-gray-500 mt-1 text-sm max-w-xl"></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="pd-status-badge" class="badge text-xs px-2.5 py-1 rounded-full font-medium"></span>
+            <button onclick="openCreateTaskModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+              Add Task
+            </button>
+          </div>
+        </div>
+
+        <!-- Task filters -->
+        <div class="flex gap-2 mt-5">
+          <input type="text" id="task-search" placeholder="Search tasks…" oninput="filterTasks()"
+            class="flex-1 max-w-xs px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <select id="task-status-filter" onchange="filterTasks()"
+            class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            <option value="">All statuses</option>
+            <option value="backlog">Backlog</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="in_review">In Review</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select id="task-priority-filter" onchange="filterTasks()"
+            class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            <option value="">All priorities</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+      <div id="tasks-list" class="space-y-2"></div>
+      <div id="tasks-empty" class="hidden text-center py-16 text-gray-400">
+        <svg class="w-10 h-10 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        <p class="font-medium">No tasks yet</p>
+        <p class="text-sm mt-1">Add the first task to this project.</p>
+      </div>
+    </div>
+
+    <!-- MY TASKS PAGE -->
+    <div id="page-my-tasks" class="page p-8">
+      <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">My Tasks</h1>
+        <p class="text-gray-500 text-sm mt-1">All tasks assigned to you across all projects.</p>
+      </div>
+      <div class="flex gap-2 mb-5">
+        <select id="mytasks-status-filter" onchange="loadMyTasks()"
+          class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+          <option value="">All statuses</option>
+          <option value="todo">To Do</option>
+          <option value="in_progress">In Progress</option>
+          <option value="in_review">In Review</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div id="my-tasks-list" class="space-y-2"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ========== MODALS ========== -->
+
+<!-- Create Project Modal -->
+<div id="create-project-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/30">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-5">New Project</h2>
+    <form onsubmit="handleCreateProject(event)" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Project name *</label>
+        <input type="text" id="cp-name" required placeholder="e.g. Mobile App Redesign"
+          class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea id="cp-description" rows="3" placeholder="What is this project about?"
+          class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+        <input type="date" id="cp-due-date"
+          class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div id="cp-error" class="text-red-600 text-sm hidden"></div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('create-project-modal')"
+          class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Cancel</button>
+        <button type="submit" id="cp-btn"
+          class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-lg transition flex items-center justify-center gap-2">
+          Create Project
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Create / Edit Task Modal -->
+<div id="task-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/30">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
+    <h2 id="task-modal-title" class="text-lg font-semibold text-gray-900 mb-5">New Task</h2>
+    <form onsubmit="handleTaskSubmit(event)" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+        <input type="text" id="tm-title" required placeholder="What needs to be done?"
+          class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <textarea id="tm-description" rows="3" placeholder="Add more details…"
+          class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select id="tm-status" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="in_review">In Review</option>
+            <option value="done">Done</option>
+            <option value="backlog">Backlog</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+          <select id="tm-priority" class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Due date</label>
+          <input type="date" id="tm-due-date"
+            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Est. hours</label>
+          <input type="number" id="tm-hours" min="0" step="0.5" placeholder="0"
+            class="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+      </div>
+      <div id="tm-error" class="text-red-600 text-sm hidden"></div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="closeModal('task-modal')"
+          class="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition">Cancel</button>
+        <button type="submit" id="tm-btn"
+          class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-lg transition flex items-center justify-center gap-2">
+          Save Task
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Task Detail Modal -->
+<div id="task-detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-backdrop bg-black/30">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+      <h2 id="td-title" class="font-semibold text-gray-900 text-lg leading-tight pr-4"></h2>
+      <button onclick="closeModal('task-detail-modal')" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-5">
+      <div class="flex flex-wrap gap-2">
+        <span id="td-status" class="badge text-xs px-2.5 py-1 rounded-full font-medium"></span>
+        <span id="td-priority" class="badge text-xs px-2.5 py-1 rounded-full font-medium"></span>
+      </div>
+      <div id="td-description" class="text-sm text-gray-600 leading-relaxed"></div>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div><span class="text-gray-400 text-xs uppercase tracking-wide font-medium">Reporter</span><p id="td-reporter" class="mt-1 text-gray-700"></p></div>
+        <div><span class="text-gray-400 text-xs uppercase tracking-wide font-medium">Assignee</span><p id="td-assignee" class="mt-1 text-gray-700"></p></div>
+        <div><span class="text-gray-400 text-xs uppercase tracking-wide font-medium">Due date</span><p id="td-due" class="mt-1 text-gray-700"></p></div>
+        <div><span class="text-gray-400 text-xs uppercase tracking-wide font-medium">Est. hours</span><p id="td-hours" class="mt-1 text-gray-700"></p></div>
+      </div>
+      <!-- Comments -->
+      <div>
+        <h3 class="text-sm font-medium text-gray-900 mb-3">Comments</h3>
+        <div id="td-comments" class="space-y-3 mb-3"></div>
+        <div class="flex gap-2">
+          <input type="text" id="td-comment-input" placeholder="Write a comment…"
+            class="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button onclick="postComment()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 rounded-lg transition">Post</button>
+        </div>
+      </div>
+    </div>
+    <div class="px-6 pb-6 flex gap-2 justify-end border-t border-gray-100 pt-4">
+      <button onclick="editCurrentTask()" class="px-4 py-2 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition">Edit Task</button>
+      <button onclick="deleteCurrentTask()" class="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed bottom-5 right-5 z-[100] space-y-2 pointer-events-none"></div>
+
+<script>
+// ==================== STATE ====================
+const API = '/api/v1';
+let accessToken = localStorage.getItem('access_token') || null;
+let refreshToken = localStorage.getItem('refresh_token') || null;
+let currentUser = null;
+let currentProject = null;
+let allProjects = [];
+let allTasks = [];
+let currentTaskId = null;
+let editingTaskId = null;
+
+// ==================== API CLIENT ====================
+async function apiFetch(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+  let res = await fetch(API + path, { ...options, headers });
+
+  if (res.status === 401 && refreshToken) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+      res = await fetch(API + path, { ...options, headers });
+    } else {
+      logout();
+      return null;
+    }
+  }
+  return res;
+}
+
+async function tryRefresh() {
+  try {
+    const res = await fetch(API + '/auth/token/refresh/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    accessToken = data.access;
+    localStorage.setItem('access_token', accessToken);
+    return true;
+  } catch { return false; }
+}
+
+function setTokens(access, refresh) {
+  accessToken = access;
+  refreshToken = refresh;
+  localStorage.setItem('access_token', access);
+  localStorage.setItem('refresh_token', refresh);
+}
+
+function logout() {
+  accessToken = null; refreshToken = null; currentUser = null;
+  localStorage.clear();
+  showAuth();
+}
+
+// ==================== AUTH ====================
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('login-form').classList.toggle('hidden', !isLogin);
+  document.getElementById('register-form').classList.toggle('hidden', isLogin);
+  document.getElementById('tab-login').className = isLogin
+    ? 'flex-1 text-sm py-1.5 rounded-md font-medium transition-all bg-white shadow-sm text-gray-900'
+    : 'flex-1 text-sm py-1.5 rounded-md font-medium transition-all text-gray-500';
+  document.getElementById('tab-register').className = !isLogin
+    ? 'flex-1 text-sm py-1.5 rounded-md font-medium transition-all bg-white shadow-sm text-gray-900'
+    : 'flex-1 text-sm py-1.5 rounded-md font-medium transition-all text-gray-500';
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+  setLoading(btn, true, 'Signing in…');
+  try {
+    const res = await fetch(API + '/auth/login/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('login-email').value,
+        password: document.getElementById('login-password').value,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = extractError(data);
+      errEl.classList.remove('hidden');
+      return;
+    }
+    setTokens(data.access, data.refresh);
+    currentUser = data.user;
+    showApp();
+  } finally { setLoading(btn, false, 'Sign in'); }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const btn = document.getElementById('reg-btn');
+  const errEl = document.getElementById('reg-error');
+  errEl.classList.add('hidden');
+  setLoading(btn, true, 'Creating account…');
+  try {
+    const res = await fetch(API + '/auth/register/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: document.getElementById('reg-name').value,
+        email: document.getElementById('reg-email').value,
+        password: document.getElementById('reg-password').value,
+        password2: document.getElementById('reg-password2').value,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errEl.textContent = extractError(data);
+      errEl.classList.remove('hidden');
+      return;
+    }
+    setTokens(data.tokens.access, data.tokens.refresh);
+    currentUser = data.user;
+    showApp();
+  } finally { setLoading(btn, false, 'Create account'); }
+}
+
+async function handleLogout() {
+  try {
+    await apiFetch('/auth/logout/', { method: 'POST', body: JSON.stringify({ refresh: refreshToken }) });
+  } catch {}
+  logout();
+}
+
+// ==================== APP INIT ====================
+async function showApp() {
+  if (!currentUser) {
+    const res = await apiFetch('/auth/me/');
+    if (!res || !res.ok) { showAuth(); return; }
+    currentUser = await res.json();
+  }
+  document.getElementById('auth-screen').classList.add('hidden');
+  document.getElementById('app-shell').classList.remove('hidden');
+  populateSidebar();
+  navigate('dashboard');
+}
+
+function showAuth() {
+  document.getElementById('auth-screen').classList.remove('hidden');
+  document.getElementById('app-shell').classList.add('hidden');
+}
+
+function populateSidebar() {
+  const initials = currentUser.full_name.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
+  document.getElementById('sidebar-avatar').textContent = initials;
+  document.getElementById('sidebar-name').textContent = currentUser.full_name;
+  document.getElementById('sidebar-email').textContent = currentUser.email;
+  const hour = new Date().getHours();
+  document.getElementById('greeting-time').textContent = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  document.getElementById('greeting-name').textContent = currentUser.full_name.split(' ')[0];
+}
+
+// ==================== NAVIGATION ====================
+function navigate(page, projectId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+
+  const pageEl = document.getElementById(`page-${page === 'project-detail' ? 'project-detail' : page}`);
+  if (pageEl) pageEl.classList.add('active');
+
+  const navMap = { dashboard: 0, projects: 1, 'my-tasks': 2 };
+  if (navMap[page] !== undefined) {
+    document.querySelectorAll('.sidebar-item')[navMap[page]]?.classList.add('active');
+  }
+
+  if (page === 'dashboard') loadDashboard();
+  else if (page === 'projects') loadProjects();
+  else if (page === 'my-tasks') loadMyTasks();
+  else if (page === 'project-detail' && projectId) loadProjectDetail(projectId);
+}
+
+// ==================== DASHBOARD ====================
+async function loadDashboard() {
+  const [projectsRes, myTasksRes] = await Promise.all([
+    apiFetch('/projects/?page_size=100'),
+    apiFetch('/tasks/my-tasks/?page_size=100'),
+  ]);
+  const projectsData = projectsRes?.ok ? await projectsRes.json() : { results: [] };
+  const myTasksData = myTasksRes?.ok ? await myTasksRes.json() : { results: [] };
+
+  const projects = projectsData.results || [];
+  const myTasks = myTasksData.results || [];
+
+  document.getElementById('stat-projects').textContent = projects.length;
+  document.getElementById('stat-mytasks').textContent = myTasks.length;
+  document.getElementById('stat-inprogress').textContent = myTasks.filter(t => t.status === 'in_progress').length;
+  document.getElementById('stat-done').textContent = myTasks.filter(t => t.status === 'done').length;
+
+  const container = document.getElementById('dashboard-tasks');
+  const recent = myTasks.slice(0, 8);
+  if (!recent.length) {
+    container.innerHTML = `<div class="px-6 py-10 text-center text-gray-400 text-sm">No tasks assigned to you yet.</div>`;
+    return;
+  }
+  container.innerHTML = recent.map(t => taskRowHtml(t, true)).join('');
+}
+
+// ==================== PROJECTS ====================
+async function loadProjects() {
+  const res = await apiFetch('/projects/?page_size=100');
+  if (!res?.ok) return;
+  const data = await res.json();
+  allProjects = data.results || [];
+  renderProjects(allProjects);
+}
+
+function renderProjects(projects) {
+  const grid = document.getElementById('projects-grid');
+  const empty = document.getElementById('projects-empty');
+  if (!projects.length) { grid.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  grid.innerHTML = projects.map(p => `
+    <div class="bg-white rounded-xl border border-gray-100 p-5 hover:border-indigo-200 hover:shadow-sm transition cursor-pointer"
+         onclick="navigate('project-detail', '${p.id}')">
+      <div class="flex items-start justify-between mb-3">
+        <h3 class="font-medium text-gray-900 leading-tight">${escHtml(p.name)}</h3>
+        <span class="badge badge-${p.status} text-xs px-2 py-0.5 rounded-full font-medium ml-2 flex-shrink-0">${fmtStatus(p.status)}</span>
+      </div>
+      <p class="text-sm text-gray-500 line-clamp-2 mb-4">${escHtml(p.description || 'No description.')}</p>
+      <div class="flex items-center justify-between text-xs text-gray-400">
+        <span>${p.task_count || 0} tasks · ${p.member_count || 0} members</span>
+        ${p.due_date ? `<span>Due ${fmtDate(p.due_date)}</span>` : ''}
+      </div>
+      ${p.task_count > 0 ? `
+      <div class="mt-3">
+        <div class="w-full bg-gray-100 rounded-full h-1.5">
+          <div class="bg-indigo-500 h-1.5 rounded-full transition-all" style="width:${Math.round((p.completed_task_count / p.task_count) * 100)}%"></div>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">${p.completed_task_count}/${p.task_count} done</p>
+      </div>` : ''}
+    </div>
+  `).join('');
+}
+
+function filterProjects() {
+  const search = document.getElementById('project-search').value.toLowerCase();
+  const status = document.getElementById('project-status-filter').value;
+  let filtered = allProjects;
+  if (search) filtered = filtered.filter(p => p.name.toLowerCase().includes(search) || (p.description || '').toLowerCase().includes(search));
+  if (status) filtered = filtered.filter(p => p.status === status);
+  renderProjects(filtered);
+}
+
+async function handleCreateProject(e) {
+  e.preventDefault();
+  const btn = document.getElementById('cp-btn');
+  const errEl = document.getElementById('cp-error');
+  errEl.classList.add('hidden');
+  setLoading(btn, true, 'Creating…');
+  try {
+    const res = await apiFetch('/projects/', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: document.getElementById('cp-name').value,
+        description: document.getElementById('cp-description').value,
+        due_date: document.getElementById('cp-due-date').value || null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = extractError(data); errEl.classList.remove('hidden'); return; }
+    closeModal('create-project-modal');
+    document.getElementById('cp-name').value = '';
+    document.getElementById('cp-description').value = '';
+    document.getElementById('cp-due-date').value = '';
+    toast('Project created!', 'success');
+    loadProjects();
+  } finally { setLoading(btn, false, 'Create Project'); }
+}
+
+// ==================== PROJECT DETAIL ====================
+async function loadProjectDetail(projectId) {
+  currentProject = null;
+  document.getElementById('page-project-detail').classList.add('active');
+  document.getElementById('page-projects').classList.remove('active');
+
+  const res = await apiFetch(`/projects/${projectId}/`);
+  if (!res?.ok) { toast('Project not found.', 'error'); navigate('projects'); return; }
+  currentProject = await res.json();
+
+  document.getElementById('pd-name').textContent = currentProject.name;
+  document.getElementById('pd-description').textContent = currentProject.description || '';
+  const badge = document.getElementById('pd-status-badge');
+  badge.textContent = fmtStatus(currentProject.status);
+  badge.className = `badge badge-${currentProject.status} text-xs px-2.5 py-1 rounded-full font-medium`;
+
+  await loadProjectTasks(projectId);
+}
+
+async function loadProjectTasks(projectId) {
+  const status = document.getElementById('task-status-filter').value;
+  const priority = document.getElementById('task-priority-filter').value;
+  let url = `/tasks/?project=${projectId}&page_size=100`;
+  if (status) url += `&status=${status}`;
+  if (priority) url += `&priority=${priority}`;
+  const res = await apiFetch(url);
+  if (!res?.ok) return;
+  const data = await res.json();
+  allTasks = data.results || [];
+  renderTasks(allTasks);
+}
+
+function renderTasks(tasks) {
+  const list = document.getElementById('tasks-list');
+  const empty = document.getElementById('tasks-empty');
+  if (!tasks.length) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  list.innerHTML = tasks.map(t => taskRowHtml(t, false)).join('');
+}
+
+function filterTasks() {
+  const search = document.getElementById('task-search').value.toLowerCase();
+  const status = document.getElementById('task-status-filter').value;
+  const priority = document.getElementById('task-priority-filter').value;
+  let filtered = allTasks;
+  if (search) filtered = filtered.filter(t => t.title.toLowerCase().includes(search));
+  if (status) filtered = filtered.filter(t => t.status === status);
+  if (priority) filtered = filtered.filter(t => t.priority === priority);
+  renderTasks(filtered);
+}
+
+function taskRowHtml(t, showProject) {
+  return `
+    <div class="bg-white rounded-xl border border-gray-100 px-5 py-3.5 flex items-center gap-4 hover:border-indigo-100 hover:shadow-sm transition cursor-pointer"
+         onclick="openTaskDetail('${t.id}')">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 mb-0.5">
+          <span class="badge badge-${t.priority} text-xs px-2 py-0.5 rounded-full font-medium">${fmtPriority(t.priority)}</span>
+          ${showProject && t.project_name ? `<span class="text-xs text-gray-400">${escHtml(t.project_name)}</span>` : ''}
+        </div>
+        <p class="text-sm font-medium text-gray-900 truncate">${escHtml(t.title)}</p>
+        ${t.assignee ? `<p class="text-xs text-gray-400 mt-0.5">→ ${escHtml(t.assignee.full_name)}</p>` : ''}
+      </div>
+      <div class="flex items-center gap-3 flex-shrink-0">
+        ${t.due_date ? `<span class="text-xs text-gray-400">${fmtDate(t.due_date)}</span>` : ''}
+        <span class="badge badge-${t.status} text-xs px-2.5 py-1 rounded-full font-medium">${fmtStatus(t.status)}</span>
+      </div>
+    </div>`;
+}
+
+// ==================== TASKS ====================
+async function loadMyTasks() {
+  const status = document.getElementById('mytasks-status-filter').value;
+  let url = '/tasks/my-tasks/?page_size=100';
+  if (status) url += `&status=${status}`;
+  const res = await apiFetch(url);
+  if (!res?.ok) return;
+  const data = await res.json();
+  const tasks = data.results || [];
+  const list = document.getElementById('my-tasks-list');
+  list.innerHTML = tasks.length ? tasks.map(t => taskRowHtml(t, true)).join('') :
+    `<div class="text-center py-16 text-gray-400 text-sm">No tasks assigned to you.</div>`;
+}
+
+function openCreateTaskModal() {
+  editingTaskId = null;
+  document.getElementById('task-modal-title').textContent = 'New Task';
+  document.getElementById('tm-title').value = '';
+  document.getElementById('tm-description').value = '';
+  document.getElementById('tm-status').value = 'todo';
+  document.getElementById('tm-priority').value = 'medium';
+  document.getElementById('tm-due-date').value = '';
+  document.getElementById('tm-hours').value = '';
+  document.getElementById('tm-btn').textContent = 'Create Task';
+  openModal('task-modal');
+}
+
+async function handleTaskSubmit(e) {
+  e.preventDefault();
+  const btn = document.getElementById('tm-btn');
+  const errEl = document.getElementById('tm-error');
+  errEl.classList.add('hidden');
+  setLoading(btn, true, editingTaskId ? 'Saving…' : 'Creating…');
+  const body = {
+    title: document.getElementById('tm-title').value,
+    description: document.getElementById('tm-description').value,
+    status: document.getElementById('tm-status').value,
+    priority: document.getElementById('tm-priority').value,
+    due_date: document.getElementById('tm-due-date').value || null,
+    estimated_hours: document.getElementById('tm-hours').value || null,
+    ...(editingTaskId ? {} : { project: currentProject.id }),
+  };
+  try {
+    const res = await apiFetch(
+      editingTaskId ? `/tasks/${editingTaskId}/` : '/tasks/',
+      { method: editingTaskId ? 'PATCH' : 'POST', body: JSON.stringify(body) }
+    );
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = extractError(data); errEl.classList.remove('hidden'); return; }
+    closeModal('task-modal');
+    toast(editingTaskId ? 'Task updated!' : 'Task created!', 'success');
+    if (currentProject) await loadProjectTasks(currentProject.id);
+    if (editingTaskId) { closeModal('task-detail-modal'); await openTaskDetail(data.id); }
+    editingTaskId = null;
+  } finally { setLoading(btn, false, editingTaskId ? 'Save Task' : 'Create Task'); }
+}
+
+async function openTaskDetail(taskId) {
+  currentTaskId = taskId;
+  const res = await apiFetch(`/tasks/${taskId}/`);
+  if (!res?.ok) return;
+  const task = await res.json();
+
+  document.getElementById('td-title').textContent = task.title;
+
+  const statusBadge = document.getElementById('td-status');
+  statusBadge.textContent = fmtStatus(task.status);
+  statusBadge.className = `badge badge-${task.status} text-xs px-2.5 py-1 rounded-full font-medium`;
+
+  const priBadge = document.getElementById('td-priority');
+  priBadge.textContent = fmtPriority(task.priority);
+  priBadge.className = `badge badge-${task.priority} text-xs px-2.5 py-1 rounded-full font-medium`;
+
+  document.getElementById('td-description').textContent = task.description || 'No description provided.';
+  document.getElementById('td-reporter').textContent = task.reporter?.full_name || '—';
+  document.getElementById('td-assignee').textContent = task.assignee?.full_name || 'Unassigned';
+  document.getElementById('td-due').textContent = task.due_date ? fmtDate(task.due_date) : '—';
+  document.getElementById('td-hours').textContent = task.estimated_hours ? `${task.estimated_hours}h` : '—';
+
+  const commentsEl = document.getElementById('td-comments');
+  const comments = task.comments || [];
+  commentsEl.innerHTML = comments.length
+    ? comments.map(c => `
+        <div class="flex gap-3">
+          <div class="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-xs flex-shrink-0">
+            ${c.author.full_name.slice(0, 2).toUpperCase()}
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-sm font-medium text-gray-800">${escHtml(c.author.full_name)}</span>
+              <span class="text-xs text-gray-400">${fmtDatetime(c.created_at)}</span>
+              ${c.edited ? '<span class="text-xs text-gray-400">(edited)</span>' : ''}
+            </div>
+            <p class="text-sm text-gray-600">${escHtml(c.body)}</p>
+          </div>
+        </div>`).join('')
+    : `<p class="text-sm text-gray-400">No comments yet.</p>`;
+
+  openModal('task-detail-modal');
+}
+
+async function postComment() {
+  const input = document.getElementById('td-comment-input');
+  const body = input.value.trim();
+  if (!body) return;
+  const res = await apiFetch(`/tasks/${currentTaskId}/comments/`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  });
+  if (!res?.ok) { toast('Failed to post comment.', 'error'); return; }
+  input.value = '';
+  await openTaskDetail(currentTaskId);
+}
+
+function editCurrentTask() {
+  const task = { id: currentTaskId };
+  // Prefill from detail modal
+  editingTaskId = currentTaskId;
+  document.getElementById('task-modal-title').textContent = 'Edit Task';
+  document.getElementById('tm-title').value = document.getElementById('td-title').textContent;
+  document.getElementById('tm-description').value = document.getElementById('td-description').textContent === 'No description provided.' ? '' : document.getElementById('td-description').textContent;
+  document.getElementById('tm-btn').textContent = 'Save Task';
+  closeModal('task-detail-modal');
+  openModal('task-modal');
+}
+
+async function deleteCurrentTask() {
+  if (!confirm('Delete this task? This cannot be undone.')) return;
+  const res = await apiFetch(`/tasks/${currentTaskId}/`, { method: 'DELETE' });
+  if (res?.ok || res?.status === 204) {
+    closeModal('task-detail-modal');
+    toast('Task deleted.', 'success');
+    if (currentProject) await loadProjectTasks(currentProject.id);
+  } else {
+    toast('Failed to delete task.', 'error');
+  }
+}
+
+// ==================== UTILS ====================
+function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast pointer-events-auto px-4 py-3 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2 ${
+    type === 'success' ? 'bg-gray-900 text-white' : 'bg-red-600 text-white'
+  }`;
+  el.innerHTML = `<span>${type === 'success' ? '✓' : '✕'}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function setLoading(btn, loading, text) {
+  btn.disabled = loading;
+  btn.innerHTML = loading ? `<span class="spinner"></span>${text}` : text;
+}
+
+function extractError(data) {
+  if (data?.errors?.length) return data.errors.map(e => e.message).join(' ');
+  if (data?.detail) return data.detail;
+  if (typeof data === 'string') return data;
+  return 'An error occurred.';
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+
+function fmtStatus(s) {
+  const map = { todo:'To Do', in_progress:'In Progress', in_review:'In Review', done:'Done', backlog:'Backlog', cancelled:'Cancelled', active:'Active', on_hold:'On Hold', completed:'Completed', archived:'Archived' };
+  return map[s] || s;
+}
+
+function fmtPriority(p) {
+  return p ? p.charAt(0).toUpperCase() + p.slice(1) : '';
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+
+function fmtDatetime(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('[id$="-modal"]').forEach(modal => {
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); });
+});
+
+// ==================== BOOT ====================
+(async () => {
+  if (accessToken || refreshToken) {
+    await showApp();
+  }
+})();
+</script>
+</body>
+</html>

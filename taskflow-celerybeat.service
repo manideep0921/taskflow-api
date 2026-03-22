@@ -1,0 +1,23 @@
+[Unit]
+Description=TaskFlow Celery Beat Scheduler
+After=network.target redis.service
+Requires=redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/taskflow/backend
+EnvironmentFile=/var/www/taskflow/.env
+
+ExecStart=/var/www/taskflow/venv/bin/celery \
+    -A taskflow beat \
+    --loglevel=info \
+    --logfile=/var/log/taskflow/celery-beat.log \
+    --scheduler django_celery_beat.schedulers:DatabaseScheduler
+
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,25 @@
+[Unit]
+Description=TaskFlow Gunicorn Daemon
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/taskflow/backend
+ExecStart=/var/www/taskflow/venv/bin/gunicorn \
+    --config /var/www/taskflow/gunicorn.conf.py \
+    taskflow.wsgi:application
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=on-failure
+RestartSec=5
+
+# Load environment from .env file
+EnvironmentFile=/var/www/taskflow/.env
+
+[Install]
+WantedBy=multi-user.target

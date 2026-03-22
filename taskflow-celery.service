@@ -1,0 +1,29 @@
+[Unit]
+Description=TaskFlow Celery Worker
+After=network.target redis.service postgresql.service
+Requires=redis.service
+
+[Service]
+Type=forking
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/taskflow/backend
+EnvironmentFile=/var/www/taskflow/.env
+
+ExecStart=/var/www/taskflow/venv/bin/celery \
+    -A taskflow worker \
+    --loglevel=info \
+    --logfile=/var/log/taskflow/celery-worker.log \
+    --pidfile=/var/run/celery/worker.pid \
+    --concurrency=2 \
+    --detach
+
+ExecStop=/bin/kill -TERM $MAINPID
+ExecReload=/bin/kill -HUP $MAINPID
+
+RuntimeDirectory=celery
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
