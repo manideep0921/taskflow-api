@@ -326,8 +326,16 @@ class ActivityLogTests(TestCase):
 
     def test_activity_log_created_on_task_create(self):
         from apps.tasks.models import TaskActivity
+        # Activity logging happens in TaskSerializer.create(), which only runs
+        # via the API — make_task() creates the Task directly via the ORM in
+        # setUp() and bypasses it. Create through the client instead so this
+        # actually exercises the real creation path.
+        res = self.client.post(LIST_URL, {
+            'project': str(self.project.id), 'title': 'Logged task',
+        }, format='json')
+        self.assertEqual(res.status_code, 201)
         self.assertTrue(
-            TaskActivity.objects.filter(task=self.task, verb='created task').exists()
+            TaskActivity.objects.filter(task_id=res.json()['id'], verb='created task').exists()
         )
 
     def test_activity_log_on_status_change(self):

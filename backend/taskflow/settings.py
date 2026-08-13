@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -10,6 +11,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
+
+# `manage.py test` uses Django's built-in test client, which talks plain HTTP.
+# SECURE_SSL_REDIRECT below would otherwise 301-redirect every single test
+# request and fail almost the entire suite for a reason that has nothing to
+# do with the code under test.
+RUNNING_TESTS = 'test' in sys.argv
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -143,7 +150,7 @@ REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 # ── Cache (Redis) ─────────────────────────────────────────────────────────────
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': REDIS_URL,
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
@@ -283,7 +290,7 @@ LOGGING = {
 }
 
 # Security settings for production
-if not DEBUG:
+if not DEBUG and not RUNNING_TESTS:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
